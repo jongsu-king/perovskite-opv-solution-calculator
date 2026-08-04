@@ -86,9 +86,6 @@ OPV_PRESETS: dict[str, dict] = {
 }
 
 
-# ==========================================================================
-# Material library (precursors / solvents / OPV materials)
-# ==========================================================================
 def default_library() -> dict:
     return {
         "precursors": [dict(e) for e in chem.PRECURSORS],
@@ -110,9 +107,6 @@ def load_library() -> dict:
     return lib
 
 
-# ==========================================================================
-# Shared widgets
-# ==========================================================================
 class ScrollFrame(ttk.Frame):
     """A vertically scrollable frame. Place the content in self.inner."""
 
@@ -388,9 +382,6 @@ def to_float(var: tk.StringVar | str, label: str, default=None) -> float:
         raise CalcError(f"Could not read '{raw}' as a number ({label}).") from None
 
 
-# ==========================================================================
-# Tab 1 - Perovskite
-# ==========================================================================
 class PerovskiteTab(ttk.Frame):
     def __init__(self, master, app: "App"):
         super().__init__(master, padding=10)
@@ -401,7 +392,6 @@ class PerovskiteTab(ttk.Frame):
         left.canvas.configure(width=450)
         panel = left.inner
 
-        # Presets -------------------------------------------------------
         preset = section(panel, "Composition presets")
         self.preset_var = tk.StringVar()
         combo = ttk.Combobox(preset, textvariable=self.preset_var, width=47,
@@ -409,7 +399,6 @@ class PerovskiteTab(ttk.Frame):
         combo.pack(side="left")
         combo.bind("<<ComboboxSelected>>", self.apply_preset)
 
-        # Composition ---------------------------------------------------
         comp = section(panel, "Composition (ABX3) — ratios are normalized automatically")
         ttk.Label(comp, text="A-site cations (sum → 1)", style="Hint.TLabel").pack(anchor="w")
         self.a_rows = DynRows(comp, [
@@ -432,7 +421,6 @@ class PerovskiteTab(ttk.Frame):
         ], rows=[["I", "2.49"], ["Br", "0.51"]])
         self.x_rows.pack(fill="x", pady=(2, 0))
 
-        # Solution conditions -------------------------------------------
         cond = section(panel, "Solution conditions")
         row, self.conc_var = labeled_entry(cond, "Concentration", "1.2", unit="M (per Pb)")
         row.pack(anchor="w", pady=1)
@@ -443,7 +431,6 @@ class PerovskiteTab(ttk.Frame):
         ttk.Label(cond, text="e.g. 5% PbI2 excess → enter 5",
                   style="Hint.TLabel").pack(anchor="w")
 
-        # Halide allocation ----------------------------------------------
         alloc = section(panel, "Halide allocation (fraction supplied as a B-site salt)")
         self.alloc_vars = {}
         for halide, default in (("Br", "100"), ("Cl", "0"), ("I", "100")):
@@ -453,7 +440,6 @@ class PerovskiteTab(ttk.Frame):
         ttk.Label(alloc, text="100% → supplied as PbBr2;  0% → supplied as FABr / MABr",
                   style="Hint.TLabel", wraplength=400).pack(anchor="w")
 
-        # Additives -------------------------------------------------------
         add = section(panel, "Additives (mol% of the formula unit)")
         self.add_rows = DynRows(add, [
             {"kind": "combo", "values": self.app.precursor_names(), "width": 18,
@@ -462,7 +448,6 @@ class PerovskiteTab(ttk.Frame):
         ], rows=[["", ""]])
         self.add_rows.pack(fill="x")
 
-        # Solvents ---------------------------------------------------------
         solv = section(panel, "Solvents (volume ratio)")
         self.solv_rows = DynRows(solv, [
             {"kind": "combo", "values": self.app.solvent_names(), "width": 18,
@@ -471,7 +456,6 @@ class PerovskiteTab(ttk.Frame):
         ], rows=[["DMF", "4"], ["DMSO", "1"]])
         self.solv_rows.pack(fill="x")
 
-        # Buttons -----------------------------------------------------------
         buttons = ttk.Frame(panel)
         buttons.pack(fill="x", pady=(4, 12))
         ttk.Button(buttons, text="Calculate", style="Accent.TButton",
@@ -480,11 +464,9 @@ class PerovskiteTab(ttk.Frame):
                    command=self.save_recipe).pack(side="left", padx=4)
         ttk.Button(buttons, text="Load", command=self.load_recipe).pack(side="left")
 
-        # Result ------------------------------------------------------------
         self.result = ResultView(self, "Weighing table — perovskite precursor solution")
         self.result.pack(side="left", fill="both", expand=True)
 
-    # -- actions ---------------------------------------------------------
     def apply_preset(self, _event=None):
         preset = PVK_PRESETS.get(self.preset_var.get())
         if not preset:
@@ -548,9 +530,6 @@ class PerovskiteTab(ttk.Frame):
             self.restore(data)
 
 
-# ==========================================================================
-# Tab 2 - Organic solar cell
-# ==========================================================================
 class OPVTab(ttk.Frame):
     def __init__(self, master, app: "App"):
         super().__init__(master, padding=10)
@@ -684,9 +663,6 @@ class OPVTab(ttk.Frame):
             self.restore(data)
 
 
-# ==========================================================================
-# Tab 3 - Conversion and dilution tools
-# ==========================================================================
 class ToolsTab(ttk.Frame):
     def __init__(self, master, app: "App"):
         super().__init__(master, padding=14)
@@ -697,7 +673,6 @@ class ToolsTab(ttk.Frame):
         right = ttk.Frame(self)
         right.pack(side="left", fill="both", expand=True)
 
-        # Molar mass -----------------------------------------------------
         mw_box = section(left, "Molar mass calculator")
         ttk.Label(mw_box, wraplength=390, style="Hint.TLabel",
                   text="Supports abbreviations (MA, FA, PEA, OAc), nested "
@@ -713,7 +688,6 @@ class ToolsTab(ttk.Frame):
         self.mw_out.pack(fill="x", pady=(6, 0))
         self.mw_out.configure(state="disabled")
 
-        # Unit conversion --------------------------------------------------
         conv = section(left, "Concentration conversion  (mg/mL ↔ mol/L)")
         row, self.conv_mw = labeled_entry(conv, "Molar mass", "461.01", unit="g/mol")
         row.pack(anchor="w", pady=1)
@@ -731,7 +705,6 @@ class ToolsTab(ttk.Frame):
         ttk.Combobox(conv, textvariable=self.conv_pick, width=24,
                      values=self.app.all_names()).pack(anchor="w")
 
-        # Dilution ----------------------------------------------------------
         dil = section(right, "Dilution  C1·V1 = C2·V2")
         ttk.Label(dil, text="Leave exactly one field empty — that is what gets solved.",
                   style="Hint.TLabel", wraplength=390).pack(anchor="w")
@@ -749,7 +722,6 @@ class ToolsTab(ttk.Frame):
         self.dil_out.pack(fill="x")
         self.dil_out.configure(state="disabled")
 
-        # Stock mixing --------------------------------------------------------
         stock = section(right, "Prepare a solution from a stock")
         row, self.s_conc = labeled_entry(stock, "Stock conc.", "1.5", unit="M or mg/mL")
         row.pack(anchor="w", pady=1)
@@ -851,9 +823,6 @@ class ToolsTab(ttk.Frame):
                     f"Total  {v_stock + v_solvent:.4g} mL")
 
 
-# ==========================================================================
-# Tab 4 - Material library
-# ==========================================================================
 class LibraryTab(ttk.Frame):
     KINDS = {"precursors": "Precursors", "solvents": "Solvents",
              "opv": "OPV materials"}
@@ -990,9 +959,6 @@ class LibraryTab(ttk.Frame):
             self.refresh()
 
 
-# ==========================================================================
-# File helpers
-# ==========================================================================
 def save_json(data: dict, initial: str):
     path = filedialog.asksaveasfilename(defaultextension=".json",
                                         filetypes=[("JSON", "*.json")],
@@ -1019,9 +985,6 @@ def open_json() -> dict | None:
         return None
 
 
-# ==========================================================================
-# Main application
-# ==========================================================================
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -1084,7 +1047,6 @@ class App(tk.Tk):
             f"{REPO_URL}",
         )
 
-    # -- library access --------------------------------------------------
     def _reindex(self):
         self.index = {}
         for key in ("precursors", "solvents", "opv"):

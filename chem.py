@@ -10,9 +10,6 @@ from __future__ import annotations
 
 import re
 
-# --------------------------------------------------------------------------
-# Standard atomic weights (IUPAC), g/mol
-# --------------------------------------------------------------------------
 ATOMIC_MASS: dict[str, float] = {
     "H": 1.008, "He": 4.0026, "Li": 6.94, "Be": 9.0122, "B": 10.81,
     "C": 12.011, "N": 14.007, "O": 15.999, "F": 18.998, "Ne": 20.180,
@@ -31,22 +28,19 @@ ATOMIC_MASS: dict[str, float] = {
     "Pb": 207.2, "Bi": 208.98,
 }
 
-# --------------------------------------------------------------------------
-# Abbreviations for organic cations and ligands (expanded to real formulas)
-# --------------------------------------------------------------------------
 ALIASES: dict[str, str] = {
-    "MA": "CH6N",        # methylammonium, CH3NH3+
-    "FA": "CH5N2",       # formamidinium, CH(NH2)2+
-    "GA": "CH6N3",       # guanidinium, C(NH2)3+
-    "EA": "C2H8N",       # ethylammonium
-    "PA": "C3H10N",      # n-propylammonium
-    "BA": "C4H12N",      # n-butylammonium
-    "OA": "C8H20N",      # n-octylammonium
-    "PEA": "C8H12N",     # phenethylammonium
-    "PMA": "C7H10N",     # benzylammonium (phenylmethylammonium)
-    "TBA": "C16H36N",    # tetrabutylammonium
-    "OAc": "C2H3O2",     # acetate
-    "Ac": "C2H3O2",      # acetate (conventional shorthand)
+    "MA": "CH6N",
+    "FA": "CH5N2",
+    "GA": "CH6N3",
+    "EA": "C2H8N",
+    "PA": "C3H10N",
+    "BA": "C4H12N",
+    "OA": "C8H20N",
+    "PEA": "C8H12N",
+    "PMA": "C7H10N",
+    "TBA": "C16H36N",
+    "OAc": "C2H3O2",
+    "Ac": "C2H3O2",
     "Me": "CH3",
     "Et": "C2H5",
     "Ph": "C6H5",
@@ -96,7 +90,6 @@ def _parse_group(text: str) -> dict[str, float]:
             _merge(stack[-1], group, mult)
             continue
 
-        # Check abbreviations (MA, FA, PEA, OAc ...) before element symbols
         token = next((a for a in _ALIAS_KEYS if text.startswith(a, i)), None)
         if token is not None:
             unit = _parse_group(ALIASES[token])
@@ -155,12 +148,7 @@ def molar_mass(formula: str) -> float:
     return sum(ATOMIC_MASS[el] * n for el, n in parse_formula(formula).items())
 
 
-# --------------------------------------------------------------------------
-# Built-in library
-# --------------------------------------------------------------------------
-# category: A (A-site salt) / B (B-site salt) / additive
 PRECURSORS: list[dict] = [
-    # --- B-site (metal halides) ---
     {"name": "PbI2",  "formula": "PbI2",  "category": "B"},
     {"name": "PbBr2", "formula": "PbBr2", "category": "B"},
     {"name": "PbCl2", "formula": "PbCl2", "category": "B"},
@@ -168,7 +156,6 @@ PRECURSORS: list[dict] = [
     {"name": "SnBr2", "formula": "SnBr2", "category": "B"},
     {"name": "SnCl2", "formula": "SnCl2", "category": "B"},
     {"name": "GeI2",  "formula": "GeI2",  "category": "B"},
-    # --- A-site (organic / inorganic halide salts) ---
     {"name": "MAI",   "formula": "MAI",   "category": "A"},
     {"name": "MABr",  "formula": "MABr",  "category": "A"},
     {"name": "MACl",  "formula": "MACl",  "category": "A"},
@@ -186,7 +173,6 @@ PRECURSORS: list[dict] = [
     {"name": "PEABr", "formula": "PEABr", "category": "A"},
     {"name": "BAI",   "formula": "BAI",   "category": "A"},
     {"name": "OAI",   "formula": "OAI",   "category": "A"},
-    # --- Additives ---
     {"name": "Pb(SCN)2",   "formula": "Pb(SCN)2",   "category": "additive"},
     {"name": "MASCN",      "formula": "MASCN",      "category": "additive"},
     {"name": "KI",         "formula": "KI",         "category": "additive"},
@@ -197,7 +183,6 @@ PRECURSORS: list[dict] = [
     {"name": "MDACl2",     "formula": "C2H10N2Cl2", "category": "additive"},
 ]
 
-# density: g/mL (literature values near 25 °C), bp: °C
 SOLVENTS: list[dict] = [
     {"name": "DMF",           "formula": "C3H7NO",    "density": 0.944, "bp": 153},
     {"name": "DMSO",          "formula": "C2H6OS",    "density": 1.100, "bp": 189},
@@ -220,8 +205,6 @@ SOLVENTS: list[dict] = [
     {"name": "DPE",           "formula": "C12H10O",   "density": 1.073, "bp": 258},
 ]
 
-# Organic photovoltaic materials. The blend calculation is mass-based, so the
-# molar mass is optional (leave the formula as None when it is not meaningful).
 OPV_MATERIALS: list[dict] = [
     {"name": "P3HT",     "role": "donor",    "formula": "C10H14S",
      "note": "MW of the repeat unit"},

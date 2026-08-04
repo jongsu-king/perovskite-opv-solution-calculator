@@ -52,9 +52,6 @@ def _salt_name(cation: str, halide: str, b_site: bool) -> str:
     return f"{cation}{halide}2" if b_site else f"{cation}{halide}"
 
 
-# --------------------------------------------------------------------------
-# Perovskite
-# --------------------------------------------------------------------------
 def perovskite_recipe(
     a_sites: list[tuple[str, float]],
     b_sites: list[tuple[str, float]],
@@ -86,12 +83,11 @@ def perovskite_recipe(
     x_sites = _normalize(x_sites, 3.0, "halide (X-site)")
 
     halide_to_b = dict(halide_to_b or {})
-    order = ["Cl", "Br", "I"]  # place the minor components first
+    order = ["Cl", "Br", "I"]
     x_map = {n: v for n, v in x_sites}
     for h in x_map:
         halide_to_b.setdefault(h, 0.0 if h == "Cl" else 1.0)
 
-    # A B-site salt carries 2 halides, an A-site salt carries 1 (3 in total).
     b_budget, a_budget = 2.0, 1.0
     to_b: dict[str, float] = {}
     to_a: dict[str, float] = {}
@@ -103,7 +99,7 @@ def perovskite_recipe(
         want = x_map[h] * max(0.0, min(1.0, halide_to_b[h]))
         nb = min(want, b_budget)
         na = x_map[h] - nb
-        if na > a_budget + EPS:  # A-site budget exceeded -> push back to B-site
+        if na > a_budget + EPS:
             shift = min(na - a_budget, b_budget - nb)
             nb, na = nb + shift, na - shift
             warnings.append(
@@ -122,7 +118,7 @@ def perovskite_recipe(
     if abs(b_budget) > 1e-6 or abs(a_budget) > 1e-6:
         raise CalcError("Check the composition: the halides must add up to 3.")
 
-    total_mol = conc_M * volume_mL / 1000.0  # mol of formula units
+    total_mol = conc_M * volume_mL / 1000.0
     rows: list[Row] = []
     warn = list(warnings)
 
@@ -152,7 +148,6 @@ def perovskite_recipe(
         for h, amount in to_a.items():
             add_salt(cation, h, frac * amount, False)
 
-    # Additives: mol% relative to the formula unit
     for name, pct in (additives or []):
         if not name or abs(pct) < EPS:
             continue
@@ -220,9 +215,6 @@ def _solvent_rows(solvents, volume_mL, library, available_mL=None) -> list[Row]:
     return rows
 
 
-# --------------------------------------------------------------------------
-# Organic solar cell blend
-# --------------------------------------------------------------------------
 def opv_recipe(
     materials: list[tuple[str, float]],
     volume_mL: float,
@@ -262,7 +254,6 @@ def opv_recipe(
         rows.append(Row(
             item=name, formula=(library or {}).get(name, {}).get("formula") or "",
             mw=mw,
-            # mg / (g/mol) already gives mmol
             mmol=(mass_mg / mw) if mw else None,
             mass_mg=mass_mg,
             note=f"{conc:.4g} mg/mL"
@@ -311,9 +302,6 @@ def opv_recipe(
     return Recipe(rows, summary, warn)
 
 
-# --------------------------------------------------------------------------
-# Helpers
-# --------------------------------------------------------------------------
 def mgml_to_molar(mgml: float, mw: float) -> float:
     """mg/mL -> mol/L"""
     if mw <= 0:
