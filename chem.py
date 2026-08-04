@@ -226,6 +226,33 @@ OPV_MATERIALS: list[dict] = [
 ]
 
 
+TRANSPORT_MATERIALS: list[dict] = [
+    {"name": "spiro-OMeTAD", "formula": "C81H68N4O8", "role": "HTL host"},
+    {"name": "PTAA", "formula": None, "role": "HTL host"},
+    {"name": "P3HT (HTL)", "formula": "C10H14S", "role": "HTL host",
+     "note": "MW of the repeat unit"},
+    {"name": "PEDOT:PSS", "formula": None, "role": "HTL host",
+     "note": "aqueous dispersion, used as received"},
+    {"name": "CuSCN", "formula": "CuSCN", "role": "HTL host"},
+    {"name": "NiO", "formula": "NiO", "role": "HTL host"},
+    {"name": "Li-TFSI", "formula": "C2F6LiNO4S2", "role": "dopant",
+     "stock_mgml": 520.0, "stock_solvent": "ACN"},
+    {"name": "tBP", "formula": "C9H13N", "role": "dopant", "density": 0.923,
+     "note": "4-tert-butylpyridine, added neat"},
+    {"name": "FK209", "formula": "C42H45CoF18N12O12S6", "role": "dopant",
+     "stock_mgml": 300.0, "stock_solvent": "ACN",
+     "note": "FK209 Co(III) TFSI salt"},
+    {"name": "FK102", "formula": None, "role": "dopant",
+     "stock_mgml": 300.0, "stock_solvent": "ACN"},
+    {"name": "BCP", "formula": "C20H16N2", "role": "ETL"},
+    {"name": "C60", "formula": "C60", "role": "ETL"},
+    {"name": "SnO2 colloid", "formula": None, "role": "ETL",
+     "note": "15 wt% aqueous colloidal dispersion"},
+    {"name": "TiO2 paste", "formula": None, "role": "ETL"},
+    {"name": "ZnO", "formula": "ZnO", "role": "ETL"},
+]
+
+
 def safe_mw(formula: str | None) -> float | None:
     """Molar mass that returns None instead of raising."""
     if not formula:

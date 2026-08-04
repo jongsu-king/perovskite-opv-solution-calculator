@@ -4,6 +4,7 @@
 
 - perovskite_recipe : ABX3 composition  -> precursor masses + solvent volumes
 - opv_recipe        : donor:acceptor blend -> material masses + solvent volumes
+- transport_recipe  : doped transport layer -> host mass + dopant volumes
 - helpers           : unit conversion, dilution, stock solution mixing
 """
 
@@ -300,6 +301,119 @@ def opv_recipe(
         + (f" ({add_vol_mL * 1000:.1f} µL of additives subtracted)" if add_vol_mL else ""),
     ]
     return Recipe(rows, summary, warn)
+
+
+DOPANT_UNITS = ("mol%", "uL/mL", "mg/mL")
+
+
+def transport_recipe(
+    host: str,
+    host_conc_mgml: float,
+    volume_mL: float,
+    solvents: list[tuple[str, float]],
+    dopants: list[tuple[str, float, str, float | None]] | None = None,
+    library: dict[str, dict] | None = None,
+) -> Recipe:
+    """Doped charge-transport layer solution (spiro-OMeTAD, PTAA ...).
+
+    dopants : [(name, value, unit, stock concentration in mg/mL or None)]
+              unit is one of DOPANT_UNITS. A dopant with a stock concentration
+              is pipetted from that stock; without one it is added neat (using
+              its density) or weighed as a solid.
+
+    The solvent volume is the requested volume: dopants are added on top of it,
+    which is how the standard recipes are written. The final volume and the
+    resulting host concentration are reported in the summary.
+    """
+    if host_conc_mgml <= 0:
+        raise CalcError("The host concentration must be greater than 0.")
+    if volume_mL <= 0:
+        raise CalcError("Volume must be greater than 0.")
+    if not host:
+        raise CalcError("Enter the host material.")
+
+    lib = library or {}
+    host_mw = lookup_mw(host, lib)
+    host_mass = host_conc_mgml * volume_mL
+    host_mmol = (host_mass / host_mw) if host_mw else None
+
+    rows = [Row(
+        item=host, formula=lib.get(host, {}).get("formula") or "",
+        mw=host_mw, mmol=host_mmol, mass_mg=host_mass,
+        note=f"host · {host_conc_mgml:g} mg/mL",
+    )]
+    warn: list[str] = []
+    if host_mw is None:
+        warn.append(f"No molar mass for {host}, so mol% dopant input is unavailable.")
+
+    rows += _solvent_rows(solvents, volume_mL, lib)
+
+    dopant_vol_uL = 0.0
+    for name, value, unit, stock in (dopants or []):
+        if not name or abs(value) < EPS:
+            continue
+        if unit not in DOPANT_UNITS:
+            raise CalcError(f"Unknown dopant unit '{unit}'.")
+        entry = lib.get(name, {})
+        mw = lookup_mw(name, lib)
+        density = entry.get("density")
+        stock = stock or entry.get("stock_mgml")
+
+        if unit == "mol%":
+            if host_mmol is None:
+                raise CalcError(
+                    f"mol% needs the molar mass of {host}. "
+                    f"Register it in the library or use uL/mL instead."
+                )
+            if mw is None:
+                raise CalcError(f"mol% needs the molar mass of {name}.")
+            mass_mg = host_mmol * value / 100.0 * mw
+            vol_uL = _dopant_volume(mass_mg, stock, density)
+        elif unit == "uL/mL":
+            vol_uL = value * volume_mL
+            if stock:
+                mass_mg = vol_uL / 1000.0 * stock
+            elif density:
+                mass_mg = vol_uL * density
+            else:
+                mass_mg = None
+                warn.append(f"{name}: no stock concentration or density, "
+                            f"so the mass is unknown.")
+        else:
+            mass_mg = value * volume_mL
+            vol_uL = _dopant_volume(mass_mg, stock, density)
+
+        mmol = (mass_mg / mw) if (mass_mg and mw) else None
+        if vol_uL:
+            dopant_vol_uL += vol_uL
+        pct = (mmol / host_mmol * 100.0) if (mmol and host_mmol) else None
+        source = (f"{stock:g} mg/mL" if stock
+                  else ("neat" if density else "solid"))
+        note = f"{value:g} {unit} · {source}"
+        if pct is not None and unit != "mol%":
+            note += f" · {pct:.1f} mol%"
+        rows.append(Row(item=name, formula=entry.get("formula") or "", mw=mw,
+                        mmol=mmol, mass_mg=mass_mg, volume_uL=vol_uL, note=note))
+
+    final_mL = volume_mL + dopant_vol_uL / 1000.0
+    summary = [
+        f"Host : {host} {host_mass:.2f} mg in {volume_mL:g} mL of solvent"
+        + (f"  ({host_mmol:.4g} mmol)" if host_mmol else ""),
+        f"Dopants added on top : {dopant_vol_uL:.1f} µL"
+        f"  →  final volume {final_mL:.4g} mL",
+        f"Final host concentration : {host_mass / final_mL:.2f} mg/mL"
+        + (f"  ({host_mmol / final_mL:.4g} M)" if host_mmol else ""),
+    ]
+    return Recipe(rows, summary, warn)
+
+
+def _dopant_volume(mass_mg: float, stock: float | None, density: float | None):
+    """Volume to pipette for a given dopant mass (µL), or None if weighed."""
+    if stock:
+        return mass_mg / stock * 1000.0
+    if density:
+        return mass_mg / density
+    return None
 
 
 def mgml_to_molar(mgml: float, mw: float) -> float:

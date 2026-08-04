@@ -16,6 +16,7 @@ from tkinter import filedialog, messagebox, ttk
 
 import chem
 from calc import (
+    DOPANT_UNITS,
     CalcError,
     Recipe,
     dilution,
@@ -24,6 +25,7 @@ from calc import (
     molar_to_mgml,
     opv_recipe,
     perovskite_recipe,
+    transport_recipe,
 )
 
 __author__ = "Jongsu Lim"
@@ -85,12 +87,36 @@ OPV_PRESETS: dict[str, dict] = {
     },
 }
 
+HTL_PRESETS: dict[str, dict] = {
+    "spiro-OMeTAD standard (Li-TFSI + tBP)": {
+        "host": "spiro-OMeTAD", "conc": 72.3, "volume": 1.0,
+        "solvents": [("Chlorobenzene", 1)],
+        "dopants": [("Li-TFSI", 17.5, "uL/mL", ""), ("tBP", 28.8, "uL/mL", "")],
+    },
+    "spiro-OMeTAD + FK209 (Co(III) doped)": {
+        "host": "spiro-OMeTAD", "conc": 72.3, "volume": 1.0,
+        "solvents": [("Chlorobenzene", 1)],
+        "dopants": [("Li-TFSI", 17.5, "uL/mL", ""), ("tBP", 28.8, "uL/mL", ""),
+                    ("FK209", 29, "uL/mL", "")],
+    },
+    "PTAA 10 mg/mL (Li-TFSI + tBP)": {
+        "host": "PTAA", "conc": 10.0, "volume": 1.0,
+        "solvents": [("Toluene", 1)],
+        "dopants": [("Li-TFSI", 7.5, "uL/mL", 170), ("tBP", 4, "uL/mL", "")],
+    },
+    "P3HT 15 mg/mL, undoped": {
+        "host": "P3HT (HTL)", "conc": 15.0, "volume": 1.0,
+        "solvents": [("Chlorobenzene", 1)], "dopants": [],
+    },
+}
+
 
 def default_library() -> dict:
     return {
         "precursors": [dict(e) for e in chem.PRECURSORS],
         "solvents": [dict(e) for e in chem.SOLVENTS],
         "opv": [dict(e) for e in chem.OPV_MATERIALS],
+        "transport": [dict(e) for e in chem.TRANSPORT_MATERIALS],
     }
 
 
@@ -248,13 +274,13 @@ class ResultView(ttk.Frame):
     """Result table, summary box and export buttons."""
 
     COLUMNS = [
-        ("item", "Component", 150),
-        ("formula", "Formula", 130),
-        ("mw", "MW (g/mol)", 95),
-        ("mmol", "Amount (mmol)", 105),
-        ("mass", "Weigh (mg)", 95),
-        ("vol", "Volume (µL)", 95),
-        ("note", "Note", 275),
+        ("item", "Component", 140),
+        ("formula", "Formula", 120),
+        ("mw", "MW (g/mol)", 90),
+        ("mmol", "Amount (mmol)", 100),
+        ("mass", "Weigh (mg)", 90),
+        ("vol", "Volume (µL)", 90),
+        ("note", "Note", 300),
     ]
 
     def __init__(self, master, title="Result"):
@@ -389,7 +415,7 @@ class PerovskiteTab(ttk.Frame):
 
         left = ScrollFrame(self)
         left.pack(side="left", fill="both", expand=False, padx=(0, 10))
-        left.canvas.configure(width=450)
+        left.canvas.configure(width=440)
         panel = left.inner
 
         preset = section(panel, "Composition presets")
@@ -537,7 +563,7 @@ class OPVTab(ttk.Frame):
 
         left = ScrollFrame(self)
         left.pack(side="left", fill="both", expand=False, padx=(0, 10))
-        left.canvas.configure(width=450)
+        left.canvas.configure(width=440)
         panel = left.inner
 
         preset = section(panel, "Blend presets")
@@ -656,6 +682,129 @@ class OPVTab(ttk.Frame):
 
     def save_recipe(self):
         save_json(self.state(), "opv_recipe.json")
+
+    def load_recipe(self):
+        data = open_json()
+        if data:
+            self.restore(data)
+
+
+class TransportTab(ttk.Frame):
+    def __init__(self, master, app: "App"):
+        super().__init__(master, padding=10)
+        self.app = app
+
+        left = ScrollFrame(self)
+        left.pack(side="left", fill="both", expand=False, padx=(0, 10))
+        left.canvas.configure(width=440)
+        panel = left.inner
+
+        preset = section(panel, "Recipe presets")
+        self.preset_var = tk.StringVar()
+        combo = ttk.Combobox(preset, textvariable=self.preset_var, width=49,
+                             values=list(HTL_PRESETS), state="readonly")
+        combo.pack(side="left")
+        combo.bind("<<ComboboxSelected>>", self.apply_preset)
+
+        host = section(panel, "Host material")
+        row = ttk.Frame(host)
+        row.pack(anchor="w", pady=1)
+        ttk.Label(row, text="Material", width=17, anchor="w").pack(side="left")
+        self.host_var = tk.StringVar(value="spiro-OMeTAD")
+        self.host_combo = ttk.Combobox(row, textvariable=self.host_var, width=22,
+                                       values=self.app.transport_names())
+        self.host_combo.pack(side="left")
+        row, self.conc_var = labeled_entry(host, "Concentration", "72.3", unit="mg/mL")
+        row.pack(anchor="w", pady=1)
+        row, self.vol_var = labeled_entry(host, "Solvent volume", "1.0", unit="mL")
+        row.pack(anchor="w", pady=1)
+
+        solv = section(panel, "Solvent (volume ratio)")
+        self.solv_rows = DynRows(solv, [
+            {"kind": "combo", "values": self.app.solvent_names(), "width": 18,
+             "title": "Solvent"},
+            {"kind": "entry", "width": 10, "title": "Ratio"},
+        ], rows=[["Chlorobenzene", "1"]])
+        self.solv_rows.pack(fill="x")
+
+        dop = section(panel, "Dopants")
+        ttk.Label(dop, wraplength=430, style="Hint.TLabel",
+                  text="uL/mL = µL of stock per mL of solution. mol% is relative "
+                       "to the host. Leave the stock column empty for the library "
+                       "default or for neat liquids."
+                  ).pack(anchor="w")
+        self.dop_rows = DynRows(dop, [
+            {"kind": "combo", "values": self.app.transport_names(), "width": 16,
+             "title": "Dopant"},
+            {"kind": "entry", "width": 8, "title": "Value"},
+            {"kind": "combo", "values": list(DOPANT_UNITS), "width": 9, "title": "Unit"},
+            {"kind": "entry", "width": 10, "title": "Stock mg/mL"},
+        ], rows=[["Li-TFSI", "17.5", "uL/mL", ""], ["tBP", "28.8", "uL/mL", ""]])
+        self.dop_rows.pack(fill="x")
+
+        buttons = ttk.Frame(panel)
+        buttons.pack(fill="x", pady=(4, 12))
+        ttk.Button(buttons, text="Calculate", style="Accent.TButton",
+                   command=self.calculate).pack(side="left")
+        ttk.Button(buttons, text="Save recipe",
+                   command=self.save_recipe).pack(side="left", padx=4)
+        ttk.Button(buttons, text="Load", command=self.load_recipe).pack(side="left")
+
+        self.result = ResultView(self, "Weighing table — charge transport layer")
+        self.result.pack(side="left", fill="both", expand=True)
+
+    def apply_preset(self, _event=None):
+        preset = HTL_PRESETS.get(self.preset_var.get())
+        if not preset:
+            return
+        self.host_var.set(preset["host"])
+        self.conc_var.set(_fmt(preset["conc"]))
+        self.vol_var.set(_fmt(preset.get("volume", 1.0)))
+        self.solv_rows.set_rows([[n, v] for n, v in preset["solvents"]])
+        self.dop_rows.set_rows([list(d) for d in preset["dopants"]] or None)
+
+    def calculate(self):
+        try:
+            dopants = []
+            for values in self.dop_rows.get():
+                name, raw, unit, stock = (values + ["", "", "", ""])[:4]
+                if not name:
+                    continue
+                dopants.append((
+                    name,
+                    to_float(raw, f"the {name} amount"),
+                    unit or "uL/mL",
+                    to_float(stock, f"the {name} stock concentration", 0.0) or None,
+                ))
+            recipe = transport_recipe(
+                host=self.host_var.get().strip(),
+                host_conc_mgml=to_float(self.conc_var, "the concentration"),
+                volume_mL=to_float(self.vol_var, "the volume"),
+                solvents=self.solv_rows.get_pairs(),
+                dopants=dopants,
+                library=self.app.index,
+            )
+        except CalcError as exc:
+            messagebox.showerror("Calculation error", str(exc))
+            return
+        self.result.show(recipe)
+
+    def state(self) -> dict:
+        return {
+            "host": self.host_var.get(), "conc": self.conc_var.get(),
+            "volume": self.vol_var.get(), "solvents": self.solv_rows.get(),
+            "dopants": self.dop_rows.get(),
+        }
+
+    def restore(self, data: dict):
+        self.host_var.set(data.get("host", ""))
+        self.conc_var.set(data.get("conc", ""))
+        self.vol_var.set(data.get("volume", ""))
+        self.solv_rows.set_rows(data.get("solvents"))
+        self.dop_rows.set_rows(data.get("dopants"))
+
+    def save_recipe(self):
+        save_json(self.state(), "transport_layer_recipe.json")
 
     def load_recipe(self):
         data = open_json()
@@ -825,7 +974,7 @@ class ToolsTab(ttk.Frame):
 
 class LibraryTab(ttk.Frame):
     KINDS = {"precursors": "Precursors", "solvents": "Solvents",
-             "opv": "OPV materials"}
+             "opv": "OPV materials", "transport": "Transport layer"}
 
     def __init__(self, master, app: "App"):
         super().__init__(master, padding=12)
@@ -990,7 +1139,7 @@ class App(tk.Tk):
         super().__init__()
         self.title(f"{APP_NAME} v{__version__} — perovskite / organic solar cells "
                    f"|  {COPYRIGHT}")
-        self.geometry("1320x820")
+        self.geometry("1420x850")
         self.minsize(1120, 700)
 
         self.library = load_library()
@@ -1022,10 +1171,12 @@ class App(tk.Tk):
         self.nb.pack(fill="both", expand=True, padx=10, pady=8)
         self.pvk = PerovskiteTab(self.nb, self)
         self.opv = OPVTab(self.nb, self)
+        self.htl = TransportTab(self.nb, self)
         self.tools = ToolsTab(self.nb, self)
         self.lib_tab = LibraryTab(self.nb, self)
         self.nb.add(self.pvk, text="  Perovskite  ")
         self.nb.add(self.opv, text="  Organic solar cell  ")
+        self.nb.add(self.htl, text="  Transport layer  ")
         self.nb.add(self.tools, text="  Convert · Dilute  ")
         self.nb.add(self.lib_tab, text="  Material library  ")
 
@@ -1049,7 +1200,7 @@ class App(tk.Tk):
 
     def _reindex(self):
         self.index = {}
-        for key in ("precursors", "solvents", "opv"):
+        for key in ("precursors", "solvents", "opv", "transport"):
             for entry in self.library.get(key, []):
                 self.index[entry["name"]] = entry
 
@@ -1061,6 +1212,9 @@ class App(tk.Tk):
 
     def opv_names(self) -> list[str]:
         return sorted(e["name"] for e in self.library["opv"])
+
+    def transport_names(self) -> list[str]:
+        return sorted(e["name"] for e in self.library["transport"])
 
     def all_names(self) -> list[str]:
         return sorted(self.index)
@@ -1076,8 +1230,11 @@ class App(tk.Tk):
             (self.opv.mat_rows, self.opv_names()),
             (self.opv.solv_rows, self.solvent_names()),
             (self.opv.add_rows, self.solvent_names()),
+            (self.htl.solv_rows, self.solvent_names()),
+            (self.htl.dop_rows, self.transport_names()),
         ):
             rows.set_choices(names)
+        self.htl.host_combo.configure(values=self.transport_names())
 
 
 def main():

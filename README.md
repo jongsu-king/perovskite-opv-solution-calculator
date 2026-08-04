@@ -5,8 +5,9 @@
 ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 
 A desktop GUI calculator for **solution-processed solar cells**. It converts a
-target perovskite composition (`ABX3`) or an organic donor:acceptor blend ratio
-into the masses you actually weigh out and the solvent volumes you pipette.
+target perovskite composition (`ABX3`), an organic donor:acceptor blend ratio or
+a doped charge-transport recipe into the masses you actually weigh out and the
+volumes you pipette.
 
 Pure Python standard library (tkinter) — nothing to install.
 
@@ -35,6 +36,7 @@ Requires Python 3.10+ with tkinter (macOS / Windows / Linux).
 | `solution_calculator.py` | GUI (entry point) |
 | `calc.py` | Calculation logic — importable without the GUI |
 | `chem.py` | Formula parser, molar masses, built-in material library |
+| `docs/` | Screenshots used in this README |
 | `library.json` | Your own materials (created when you save from the Library tab) |
 
 ## Tabs
@@ -75,7 +77,27 @@ Example — `Cs0.05FA0.79MA0.16Pb(I0.83Br0.17)3`, 1.2 M, 1 mL, Br→PbBr2 100%,
 - **Additives** — DIO, 1-CN, DPE … as `vol%` of the total volume; that volume is
   subtracted from the solvent. Additives with a known density also report a mass.
 
-### 3. Convert · Dilute
+### 3. Transport layer
+
+![Transport layer tab](docs/transport.png)
+
+Doped hole- and electron-transport solutions, where the dopants are pipetted
+from stock solutions rather than weighed.
+
+- **uL/mL** — µL of stock per mL of solution, which is how the standard recipes
+  are written; it scales automatically with the batch volume.
+- **mol%** — relative to the host, for when you want to vary the doping level.
+  Both inputs agree: the standard spiro recipe entered either way lands within
+  0.03 µL.
+- Stock concentrations default to the library (Li-TFSI 520 mg/mL in ACN,
+  FK209 300 mg/mL in ACN) and neat liquids such as tBP use their density.
+- Dopants are added **on top of** the solvent volume, as in the published
+  recipes; the summary reports the final volume and host concentration.
+
+The standard doped spiro-OMeTAD solution (72.3 mg/mL in chlorobenzene, 1 mL) is
+reproduced exactly: Li-TFSI 17.5 µL, tBP 28.8 µL, FK209 29 µL.
+
+### 4. Convert · Dilute
 
 ![Convert and dilute tab](docs/tools.png)
 
@@ -85,11 +107,12 @@ Example — `Cs0.05FA0.79MA0.16Pb(I0.83Br0.17)3`, 1.2 M, 1 mL, Br→PbBr2 100%,
 - Dilution `C1V1 = C2V2` — leave the unknown field empty.
 - Prepare a target solution from a stock.
 
-### 4. Material library
+### 5. Material library
 
 ![Material library tab](docs/library.png)
 
-Browse, add, edit and delete precursors, solvents and organic materials. Enter a
+Browse, add, edit and delete precursors, solvents, organic materials and
+transport-layer materials. Enter a
 formula and the molar mass is derived; enter a density (g/mL) for solvents and
 masses are reported alongside volumes. `Save library.json` persists your changes.
 
