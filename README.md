@@ -12,6 +12,11 @@ Pure Python standard library (tkinter) — nothing to install.
 
 Author: **Jongsu Lim** · v1.0
 
+![Perovskite tab](docs/perovskite.png)
+
+*A triple-cation recipe: enter `Cs0.05FA0.79MA0.16Pb(I0.83Br0.17)3` at 1.2 M in
+1 mL with 5% B-site excess and 30 mol% MACl, and read off what to weigh.*
+
 ## Run
 
 ```bash
@@ -63,12 +68,16 @@ Example — `Cs0.05FA0.79MA0.16Pb(I0.83Br0.17)3`, 1.2 M, 1 mL, Br→PbBr2 100%,
 
 ### 2. Organic solar cell
 
+![Organic solar cell tab](docs/opv.png)
+
 - **Total concentration + weight ratio** (e.g. 16 mg/mL, PM6:Y6 = 1:1.2), or an
   **individual concentration (mg/mL)** per material.
 - **Additives** — DIO, 1-CN, DPE … as `vol%` of the total volume; that volume is
   subtracted from the solvent. Additives with a known density also report a mass.
 
 ### 3. Convert · Dilute
+
+![Convert and dilute tab](docs/tools.png)
 
 - Molar mass calculator — handles `Cs0.05FA0.79MA0.16Pb(I0.83Br0.17)3`,
   `Pb(OAc)2·3H2O`, `PEAI` and similar notation.
@@ -77,6 +86,8 @@ Example — `Cs0.05FA0.79MA0.16Pb(I0.83Br0.17)3`, 1.2 M, 1 mL, Br→PbBr2 100%,
 - Prepare a target solution from a stock.
 
 ### 4. Material library
+
+![Material library tab](docs/library.png)
 
 Browse, add, edit and delete precursors, solvents and organic materials. Enter a
 formula and the molar mass is derived; enter a density (g/mL) for solvents and

@@ -260,7 +260,7 @@ class ResultView(ttk.Frame):
         ("mmol", "Amount (mmol)", 105),
         ("mass", "Weigh (mg)", 95),
         ("vol", "Volume (µL)", 95),
-        ("note", "Note", 230),
+        ("note", "Note", 275),
     ]
 
     def __init__(self, master, title="Result"):
@@ -1027,8 +1027,8 @@ class App(tk.Tk):
         super().__init__()
         self.title(f"{APP_NAME} v{__version__} — perovskite / organic solar cells "
                    f"|  {COPYRIGHT}")
-        self.geometry("1240x800")
-        self.minsize(1080, 700)
+        self.geometry("1320x820")
+        self.minsize(1120, 700)
 
         self.library = load_library()
         self.index: dict[str, dict] = {}
