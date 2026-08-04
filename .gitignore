@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# User-specific material library (defaults live in chem.py)
+library.json
+
+# Exported results
+*.csv
+recipe*.json
+
+# macOS
+.DS_Store
