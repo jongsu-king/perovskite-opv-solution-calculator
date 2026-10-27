@@ -12,7 +12,7 @@ volumes you pipette.
 
 Pure Python standard library (tkinter) — nothing to install.
 
-Authors: Hyunsung Ji, Jongsu Lim, Kyungsik Kim, Jaeho Shin, Seungeon Lee, Jinho Lee · v1.0
+Authors: Hyunsung Ji, Jongsu Lim, Kyungsik Kim, Jaeho Shin, Seung-eon Lee, Jinho Lee · v1.0
 
 ![Perovskite tab](docs/perovskite.png)
 
