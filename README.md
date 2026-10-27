@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23682461.svg)](https://doi.org/10.5281/zenodo.23682461)
 
 A desktop GUI calculator for **solution-processed solar cells**. It converts a
 target perovskite composition (`ABX3`), an organic donor:acceptor blend ratio or
@@ -152,5 +153,5 @@ If it helps your research, a citation is appreciated:
 
 ```
 J. Lim, Solution Preparation Calculator for Perovskite and Organic Solar Cells,
-v1.0 (2026). https://github.com/jongsu-king/perovskite-opv-solution-calculator
+v1.0 (2026). Zenodo. https://doi.org/10.5281/zenodo.23682462
 ```
