@@ -12,7 +12,7 @@ volumes you pipette.
 
 Pure Python standard library (tkinter) — nothing to install.
 
-Author: **Jongsu Lim** · v1.0
+Authors: Hyunsung Ji, Jongsu Lim, Kyungsik Kim, Jaeho Shin, Seungeon Lee, Jinho Lee · v1.0
 
 ![Perovskite tab](docs/perovskite.png)
 
@@ -152,6 +152,7 @@ Free to use, modify and redistribute as long as the copyright notice is kept.
 If it helps your research, a citation is appreciated:
 
 ```
-J. Lim, Solution Preparation Calculator for Perovskite and Organic Solar Cells,
+H. Ji, J. Lim, K. Kim, J. Shin, S. Lee, J. Lee,
+Solution Preparation Calculator for Perovskite and Organic Solar Cells,
 v1.0 (2026). Zenodo. https://doi.org/10.5281/zenodo.23682462
 ```

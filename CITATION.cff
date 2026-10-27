@@ -11,10 +11,26 @@ date-released: 2026-10-27
 license: MIT
 repository-code: "https://github.com/jongsu-king/perovskite-opv-solution-calculator"
 authors:
+  - family-names: Ji
+    given-names: Hyunsung
+    affiliation: "Hybrid Materials and Optoelectronics Laboratory (H-MOL), Incheon National University"
   - family-names: Lim
     given-names: Jongsu
     orcid: "https://orcid.org/0009-0000-3395-1484"
     affiliation: "Department of Physics, Incheon National University"
+  - family-names: Kim
+    given-names: Kyungsik
+    affiliation: "Hybrid Materials and Optoelectronics Laboratory (H-MOL), Incheon National University"
+  - family-names: Shin
+    given-names: Jaeho
+    affiliation: "Hybrid Materials and Optoelectronics Laboratory (H-MOL), Incheon National University"
+  - family-names: Lee
+    given-names: Seungeon
+    affiliation: "Hybrid Materials and Optoelectronics Laboratory (H-MOL), Incheon National University"
+  - family-names: Lee
+    given-names: Jinho
+    affiliation: "Hybrid Materials and Optoelectronics Laboratory (H-MOL), Incheon National University"
+    email: jlee@inu.ac.kr
 keywords:
   - perovskite solar cells
   - organic solar cells
