@@ -30,8 +30,8 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Tools
@@ -86,7 +86,7 @@ jobs:
           HOME=/tmp/home /tmp/t/$SLUG/install.sh
           /tmp/home/.local/bin/solution-calculator --selftest --out dist/selftest-linux-tar.json
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: build-${{ matrix.os }}
           if-no-files-found: error
@@ -102,8 +102,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
@@ -115,7 +115,7 @@ jobs:
           python3 packaging/release_notes.py --dir artifacts --repo "$GITHUB_REPOSITORY" \
             --tag "$GITHUB_REF_NAME" --name "$DISPLAY_NAME" --notes "docs/release-notes/$V.md" > notes.md
           cat artifacts/SHA256SUMS.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-preview
           path: |

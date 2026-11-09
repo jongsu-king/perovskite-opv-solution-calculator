@@ -43,14 +43,19 @@ def draw(text: str, color: str, size: int = 1024) -> Image.Image:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--text", required=True)
+    ap.add_argument("--text", default="")
     ap.add_argument("--color", default="#2f6f9f")
     ap.add_argument("--out", type=Path, default=Path("packaging/icons"))
-    ap.add_argument("--source", type=Path, help="use this square PNG instead of drawing one")
+    ap.add_argument("--source", type=Path, help="use this PNG (padded to a square) instead of drawing one")
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
-    img = (Image.open(args.source).convert("RGBA").resize((1024, 1024), Image.LANCZOS)
-           if args.source else draw(args.text, args.color))
+    if args.source:
+        src = Image.open(args.source).convert("RGBA")
+        src.thumbnail((920, 920), Image.LANCZOS)          # keep the aspect ratio
+        img = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
+        img.paste(src, ((1024 - src.width) // 2, (1024 - src.height) // 2), src)
+    else:
+        img = draw(args.text, args.color)
     img.save(args.out / "app.png")
     img.resize((256, 256), Image.LANCZOS).save(args.out / "app-256.png")
     img.save(args.out / "app.ico", sizes=[(s, s) for s in (16, 24, 32, 48, 64, 128, 256)])

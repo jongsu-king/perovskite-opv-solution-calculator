@@ -9,6 +9,7 @@ ID="@ID@"
 EXE="@EXE@"
 DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
 DEST="$DATA/$ID"
+mkdir -p "$DATA"
 if [ "$HERE" != "$DEST" ]; then
   rm -rf "$DEST.new"; cp -R "$HERE" "$DEST.new"; rm -rf "$DEST"; mv "$DEST.new" "$DEST"
 fi
