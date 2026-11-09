@@ -86,6 +86,16 @@ jobs:
           HOME=/tmp/home /tmp/t/$SLUG/install.sh
           /tmp/home/.local/bin/solution-calculator --selftest --out dist/selftest-linux-tar.json
 
+      - name: Verify self-test reports
+        run: |
+          python - <<'PY'
+          import glob, json, sys
+          files = sorted(glob.glob("dist/selftest-*.json"))
+          bad = [f for f in files if not json.load(open(f, encoding="utf-8")).get("ok")]
+          print("reports:", files)
+          if not files or bad:
+              sys.exit(f"failed self-tests: {bad or 'no reports'}")
+          PY
       - uses: actions/upload-artifact@v7
         with:
           name: build-${{ matrix.os }}
