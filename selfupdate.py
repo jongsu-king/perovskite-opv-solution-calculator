@@ -57,7 +57,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
 
-SELFUPDATE_REVISION = "2026-11-09.1"
+SELFUPDATE_REVISION = "2026-11-09.2"
 
 MODES = ("auto", "notify", "off")
 DEFAULT_MODE = "auto"
@@ -419,7 +419,11 @@ def stage(install: Install, package: Path, version: str) -> Plan:
     launcher = Path(install.launch[-1]).name if install.launch else target.name
     if install.kind == "mac-app":
         mount = Path(tempfile.mkdtemp(prefix="selfupdate-"))
-        _run(["hdiutil", "attach", "-nobrowse", "-readonly", "-noautoopen", "-mountpoint", str(mount), str(package)])
+        try:
+            _run(["hdiutil", "attach", "-nobrowse", "-readonly", "-noautoopen", "-mountpoint", str(mount), str(package)])
+        except UpdateError:  # newer macOS: hdiutil attach is deprecated in favour of diskutil
+            _run(["diskutil", "image", "attach", "--mountOptions", "nobrowse", "--readOnly",
+                  "--mountPoint", str(mount), str(package)])
         try:
             source = next((p for p in mount.iterdir() if p.suffix == ".app"), None)
             if source is None:
@@ -952,9 +956,14 @@ def cli(updater: Updater, install: bool = True, out=print) -> int:
         out(f"update with: {updater.manual_instructions(release)}")
         return 0
     try:
+        shown = [-1]
+
         def bar(done: int, total: int) -> None:
-            if total:
-                sys.stderr.write(f"\r  {done * 100 // total:3d}%  {done / 1e6:.1f} MB")
+            pct = done * 100 // total if total else 0
+            if total and pct // 5 != shown[0]:
+                shown[0] = pct // 5
+                sys.stderr.write(f"\r  {pct:3d}%  {done / 1e6:.1f} of {total / 1e6:.1f} MB")
+                sys.stderr.flush()
         updater.prepare(release, bar)
         sys.stderr.write("\n")
         updater.apply_now(relaunch=False)
