@@ -20,9 +20,9 @@ PLATFORMS = [  # (test on the lower-case file name, platform, what it is, how to
      "Run it; no administrator rights needed (installs for the current user)."),
     (r"windows.*(portable)?\.zip$|windows\.exe$", "Windows 10/11 (64-bit)", "Portable",
      "Unzip anywhere and run the program inside; nothing is installed."),
-    (r"macos.*(arm64|aarch64).*\.dmg$", "macOS 12+ · Apple silicon (M1–M4)", "Disk image",
+    (r"macos.*(arm64|aarch64).*\.dmg$", "macOS 11+ · Apple silicon (M1–M4)", "Disk image",
      "Open, drag the app to Applications."),
-    (r"macos.*(x86_64|intel|x64).*\.dmg$", "macOS 12+ · Intel", "Disk image",
+    (r"macos.*(x86_64|intel|x64).*\.dmg$", "macOS 11+ · Intel", "Disk image",
      "Open, drag the app to Applications."),
     (r"macos.*\.dmg$", "macOS", "Disk image", "Open, drag the app to Applications."),
     (r"_amd64\.deb$", "Ubuntu/Debian (x86-64)", "Package",
@@ -68,6 +68,8 @@ def main() -> int:
     ap.add_argument("--name", required=True)
     ap.add_argument("--notes", type=Path)
     ap.add_argument("--no-update-section", action="store_true")
+    ap.add_argument("--menu", default="Help → Automatic updates",
+                    help="where the update setting is in the program")
     args = ap.parse_args()
 
     files = sorted(p for p in args.dir.iterdir() if p.is_file() and p.name != "SHA256SUMS.txt")
@@ -103,11 +105,11 @@ def main() -> int:
     out.append("- **Linux** - no prompt; the `.deb` adds a menu entry, `install.sh` adds one for the current user.\n")
     if not args.no_update_section:
         out.append("### Automatic updates\n")
-        out.append("The installed program checks this page at most once a day (one anonymous request to "
+        out.append(f"The installed program checks this page at most once a day (one anonymous request to "
                    "the GitHub API; nothing but the program name and version is sent). When a newer "
                    "release appears it downloads the file for your system, verifies it against "
                    "`SHA256SUMS.txt`, and installs it when you close the program (or at once if you "
-                   "choose *Restart now*). **Help → Automatic updates** switches between *download and "
+                   "choose *Restart now*). **{args.menu}** switches between *download and "
                    "install*, *only tell me*, and *off*. Copies installed with pip or run from source "
                    "are never changed; they show the command to update instead.\n")
     print("\n".join(out))
