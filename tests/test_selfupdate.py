@@ -19,10 +19,21 @@ from pathlib import Path
 from unittest import mock
 
 HERE = Path(__file__).resolve().parent
-for candidate in (HERE, HERE.parent, *(p for p in HERE.parent.iterdir() if p.is_dir())):
-    if (candidate / "selfupdate.py").exists() and str(candidate) not in sys.path:
-        sys.path.insert(0, str(candidate))
-        break
+
+
+def _find_selfupdate() -> None:
+    """Put the folder holding this repository's copy of selfupdate.py on sys.path
+    (it sits at the top level, or inside the package, e.g. src/<pkg>/)."""
+    skip = {".git", "build", "dist", "dist-app", ".venv", "venv", "site-packages", "node_modules"}
+    for depth in range(4):
+        for path in sorted(HERE.parent.glob("/".join(["*"] * depth + ["selfupdate.py"]))):
+            if not skip.intersection(path.parts):
+                if str(path.parent) not in sys.path:
+                    sys.path.insert(0, str(path.parent))
+                return
+
+
+_find_selfupdate()
 
 import selfupdate as su  # noqa: E402
 
@@ -249,11 +260,19 @@ class EndToEndTests(unittest.TestCase):
         time.sleep(0.6)
         self.assertEqual((exe.parent / "_internal" / "version.txt").read_text(), "1.0.0")
         program.wait()
-        for _ in range(50):
-            if (exe.parent / "_internal" / "version.txt").read_text() == "1.1.0":
+
+        def installed() -> str | None:
+            # between the helper's two renames the folder briefly does not exist
+            try:
+                return (exe.parent / "_internal" / "version.txt").read_text()
+            except OSError:
+                return None
+
+        for _ in range(100):
+            if installed() == "1.1.0":
                 break
             time.sleep(0.2)
-        self.assertEqual((exe.parent / "_internal" / "version.txt").read_text(), "1.1.0")
+        self.assertEqual(installed(), "1.1.0")
         self.assertEqual(subprocess.run([str(exe)], capture_output=True, text=True).stdout.strip(), "1.1.0")
         self.assertFalse((exe.parent.parent / "Demo.old-update").exists())
         self.assertFalse((exe.parent.parent / ".Demo.update").exists())
@@ -287,11 +306,18 @@ class EndToEndTests(unittest.TestCase):
         up.pending = None
         program.wait()
         plist = self.tmp / "Applications" / "Demo.app" / "Contents" / "Info.plist"
-        for _ in range(50):
-            if plist.read_text() == "1.1.0":
+
+        def installed() -> str | None:
+            try:
+                return plist.read_text()
+            except OSError:
+                return None
+
+        for _ in range(100):
+            if installed() == "1.1.0":
                 break
             time.sleep(0.2)
-        self.assertEqual(plist.read_text(), "1.1.0")
+        self.assertEqual(installed(), "1.1.0")
         self.assertEqual(sorted(p.name for p in (self.tmp / "Applications").iterdir()), ["Demo.app"])
 
     def test_zip_portable_stage(self):
