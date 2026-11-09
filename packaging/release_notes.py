@@ -25,6 +25,10 @@ PLATFORMS = [  # (test on the lower-case file name, platform, what it is, how to
     (r"macos.*(x86_64|intel|x64).*\.dmg$", "macOS 11+ · Intel", "Disk image",
      "Open, drag the app to Applications."),
     (r"macos.*\.dmg$", "macOS", "Disk image", "Open, drag the app to Applications."),
+    (r"macos.*(arm64|aarch64).*\.tar\.gz$", "macOS 11+ · Apple silicon (M1–M4)", "Archive",
+     "Unpack, then `./install.sh` (current user) or run in place."),
+    (r"macos.*(x86_64|intel|x64).*\.tar\.gz$", "macOS 11+ · Intel", "Archive",
+     "Unpack, then `./install.sh` (current user) or run in place."),
     (r"_amd64\.deb$", "Ubuntu/Debian (x86-64)", "Package",
      "`sudo apt install ./<file>`"),
     (r"linux.*\.tar\.gz$", "Linux (x86-64, glibc 2.35+)", "Archive",
@@ -105,11 +109,11 @@ def main() -> int:
     out.append("- **Linux** - no prompt; the `.deb` adds a menu entry, `install.sh` adds one for the current user.\n")
     if not args.no_update_section:
         out.append("### Automatic updates\n")
-        out.append(f"The installed program checks this page at most once a day (one anonymous request to "
+        out.append("The installed program checks this page at most once a day (one anonymous request to "
                    "the GitHub API; nothing but the program name and version is sent). When a newer "
                    "release appears it downloads the file for your system, verifies it against "
                    "`SHA256SUMS.txt`, and installs it when you close the program (or at once if you "
-                   "choose *Restart now*). **{args.menu}** switches between *download and "
+                   f"choose *Restart now*). **{args.menu}** switches between *download and "
                    "install*, *only tell me*, and *off*. Copies installed with pip or run from source "
                    "are never changed; they show the command to update instead.\n")
     print("\n".join(out))
