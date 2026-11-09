@@ -34,7 +34,7 @@ from calc import (
 __author__ = "Jongsu Lim"
 __copyright__ = "Copyright (c) 2026 Jongsu Lim"
 __license__ = "MIT"
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 APP_NAME = "Solution Preparation Calculator"
 COPYRIGHT = "© 2026 Jongsu Lim"

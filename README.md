@@ -13,7 +13,7 @@ volumes you pipette.
 Pure Python standard library (tkinter). Ready-to-run programs for Windows, macOS
 and Linux are on the [Releases page](https://github.com/jongsu-king/perovskite-opv-solution-calculator/releases/latest), and installed copies update themselves.
 
-Authors: Hyunsung Ji, Jongsu Lim, Kyungsik Kim, Jaeho Shin, Seung-Eon Lee, Jinho Lee · v1.1.0
+Authors: Hyunsung Ji, Jongsu Lim, Kyungsik Kim, Jaeho Shin, Seung-Eon Lee, Jinho Lee · v1.1.1
 
 ![Perovskite tab](docs/perovskite.png)
 

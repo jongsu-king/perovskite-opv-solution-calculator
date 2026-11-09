@@ -43,6 +43,7 @@ import platform
 import queue
 import re
 import shutil
+import ssl
 import stat
 import subprocess
 import sys
@@ -57,7 +58,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
 
-SELFUPDATE_REVISION = "2026-11-09.2"
+SELFUPDATE_REVISION = "2026-11-09.4"
 
 MODES = ("auto", "notify", "off")
 DEFAULT_MODE = "auto"
@@ -146,10 +147,42 @@ class Release:
         return self.assets.get(CHECKSUMS)
 
 
+# A frozen (PyInstaller) build carries its own OpenSSL, whose built-in certificate
+# location usually does not exist on the user's machine (macOS always, some Linux
+# distributions), so HTTPS would fail with CERTIFICATE_VERIFY_FAILED. Fall back to
+# certifi when it is bundled, else to the system's CA bundle.
+CA_FILES = (
+    "/etc/ssl/cert.pem",                       # macOS, Alpine, Arch
+    "/etc/ssl/certs/ca-certificates.crt",      # Debian, Ubuntu
+    "/etc/pki/tls/certs/ca-bundle.crt",        # Fedora, RHEL
+    "/etc/ssl/ca-bundle.pem",                  # openSUSE
+    "/etc/pki/tls/cacert.pem",
+)
+_SSL_CONTEXT: Optional[ssl.SSLContext] = None
+
+
+def ssl_context() -> ssl.SSLContext:
+    global _SSL_CONTEXT
+    if _SSL_CONTEXT is None:
+        context = ssl.create_default_context()
+        if not context.cert_store_stats().get("x509_ca"):
+            cafile = None
+            try:
+                import certifi  # bundled with httpx/requests in several programs
+                cafile = certifi.where()
+            except Exception:  # noqa: BLE001
+                cafile = next((f for f in CA_FILES if os.path.exists(f)), None)
+            if cafile and os.path.exists(cafile):
+                context = ssl.create_default_context(cafile=cafile)
+        _SSL_CONTEXT = context
+    return _SSL_CONTEXT
+
+
 def _request(app: App, url: str, accept: str = "application/octet-stream"):
     req = urllib.request.Request(url, headers={
         "Accept": accept, "User-Agent": f"{app.name.replace(' ', '-')}/{app.version}"})
-    return urllib.request.urlopen(req, timeout=TIMEOUT_S)  # noqa: S310 - https URLs only
+    context = ssl_context() if url.startswith("https:") else None
+    return urllib.request.urlopen(req, timeout=TIMEOUT_S, context=context)  # noqa: S310
 
 
 def fetch_release(app: App, opener=None) -> Release:
@@ -872,14 +905,21 @@ def attach_tk(root, updater: Updater, menu=None, lang: Optional[str] = None,
 
 
 # --------------------------------------------------------------------------- Qt (PySide6)
-def attach_qt(window, updater: Updater, menu=None, lang: Optional[str] = None,
+def attach_qt(window, updater: Updater, menu=None, lang=None,
               status: Optional[Callable[[str], None]] = None):
-    """Same as :func:`attach_tk` for a PySide6 ``QMainWindow``; ``menu`` is a ``QMenu``."""
+    """Same as :func:`attach_tk` for a PySide6 ``QMainWindow``; ``menu`` is a ``QMenu``.
+
+    ``lang`` may be a language code or a function returning one (for programs that
+    switch language at run time); call ``window._selfupdate["retranslate"]()``
+    after switching to relabel the menu entries.
+    """
     from PySide6.QtCore import QTimer, QUrl
     from PySide6.QtGui import QAction, QActionGroup, QDesktopServices
     from PySide6.QtWidgets import QApplication, QMessageBox
 
-    t = texts(lang)
+    def t() -> dict:
+        return texts(lang() if callable(lang) else lang)
+
     worker = _Worker(updater)
     updater.cleanup()
 
@@ -911,28 +951,36 @@ def attach_qt(window, updater: Updater, menu=None, lang: Optional[str] = None,
         try:
             while True:
                 kind, payload, manual = worker.results.get_nowait()
-                _handle(updater, worker, kind, payload, manual, t, ui)
+                _handle(updater, worker, kind, payload, manual, t(), ui)
         except queue.Empty:
             pass
 
     timer = QTimer(window)
     timer.timeout.connect(poll)
     timer.start(300)
-    actions = []
+    labels = []   # (object, key, setter)
     if menu is not None:
-        check = QAction(t["menu_check"], window)
+        check = QAction(t()["menu_check"], window)
         check.triggered.connect(lambda: worker.check(manual=True))
         menu.addAction(check)
-        sub = menu.addMenu(t["menu_mode"])
+        sub = menu.addMenu(t()["menu_mode"])
         group = QActionGroup(window)
+        labels += [(check, "menu_check", check.setText), (sub, "menu_mode", sub.setTitle)]
         for mode in MODES:
-            act = QAction(t[f"mode_{mode}"], window, checkable=True)
+            act = QAction(t()[f"mode_{mode}"], window, checkable=True)
             act.setChecked(updater.mode == mode)
             act.triggered.connect(lambda _=False, m=mode: setattr(updater, "mode", m))
             group.addAction(act)
             sub.addAction(act)
-        actions = [check, sub]
-    window._selfupdate = (worker, timer, actions)
+            labels.append((act, f"mode_{mode}", act.setText))
+
+    def retranslate() -> None:
+        current = t()
+        for _obj, key, setter in labels:
+            setter(current[key])
+
+    window._selfupdate = {"worker": worker, "timer": timer, "labels": labels, "retranslate": retranslate,
+                          "check": lambda: worker.check(manual=True)}
     if updater.due():
         QTimer.singleShot(3000, lambda: worker.check(manual=False))
     return worker

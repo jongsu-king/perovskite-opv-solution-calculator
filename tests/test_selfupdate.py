@@ -371,6 +371,29 @@ class EndToEndTests(unittest.TestCase):
         self.assertFalse((self.tmp / "evil").exists())
 
 
+class SSLTests(unittest.TestCase):
+    def test_falls_back_to_a_ca_bundle(self):
+        """A context without CA certificates (frozen build on macOS) gets a CA file."""
+        import ssl as _ssl
+        empty = _ssl.SSLContext(_ssl.PROTOCOL_TLS_CLIENT)
+        calls = []
+        real = _ssl.create_default_context
+
+        def fake(*args, **kwargs):
+            calls.append(kwargs.get("cafile"))
+            return empty if not kwargs.get("cafile") else real(**kwargs)
+
+        su._SSL_CONTEXT = None
+        try:
+            with mock.patch.object(su.ssl, "create_default_context", side_effect=fake):
+                context = su.ssl_context()
+        finally:
+            su._SSL_CONTEXT = None
+        if any(os.path.exists(f) for f in su.CA_FILES) or calls[-1]:
+            self.assertIsNotNone(calls[-1])
+            self.assertGreater(context.cert_store_stats().get("x509_ca", 0), 0)
+
+
 class CliTests(unittest.TestCase):
     def test_up_to_date_and_pip_hint(self):
         with tempfile.TemporaryDirectory() as tmp:
