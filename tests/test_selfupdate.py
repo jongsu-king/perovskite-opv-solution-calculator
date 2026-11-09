@@ -269,8 +269,17 @@ class EndToEndTests(unittest.TestCase):
                 return None
 
         apps = exe.parent.parent
-        for _ in range(100):  # the helper swaps first, then removes its staging folder
-            if installed() == "1.1.0" and not (apps / ".Demo.update").exists():
+        log = app.folder() / "update.log"
+
+        def finished() -> bool:  # swap, then staging clean-up, then the log line
+            try:
+                return (installed() == "1.1.0" and not (apps / ".Demo.update").exists()
+                        and "updated" in log.read_text())
+            except OSError:
+                return False
+
+        for _ in range(150):
+            if finished():
                 break
             time.sleep(0.2)
         self.assertEqual(installed(), "1.1.0")
