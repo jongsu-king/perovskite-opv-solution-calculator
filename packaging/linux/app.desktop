@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=@NAME@
+Comment=@SUMMARY@
+Exec=@EXEC@
+Icon=@ID@
+Terminal=false
+Categories=Science;Education;

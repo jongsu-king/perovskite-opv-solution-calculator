@@ -1,0 +1,134 @@
+# Builds the installers on each operating system, checks every build with its
+# --selftest, test-installs the Windows installer and the .deb, and - for a v* tag -
+# publishes them on a GitHub Release with SHA256SUMS.txt (used by the in-app updater).
+# "Run workflow" (workflow_dispatch) builds everything without publishing.
+name: Release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+permissions:
+  contents: write
+env:
+  SLUG: Solution-Calculator
+  APP_BUNDLE: Solution Calculator.app
+  BUILD: SolutionCalculator
+  DISPLAY_NAME: Solution Preparation Calculator
+  SOLCALC_NO_UPDATE: "1"
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, kind: windows }
+          - { os: macos-latest, kind: macos }     # Apple silicon
+          - { os: macos-15-intel, kind: macos }   # Intel
+          - { os: ubuntu-22.04, kind: linux }     # glibc 2.35: runs on Ubuntu 22.04+ / Debian 12+
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tools
+        run: python -m pip install --upgrade pip pyinstaller pillow
+      - name: Version
+        run: |
+          V=$(python -c "import re;print(re.search(r'__version__ = \"([^\"]+)\"', open('solution_calculator.py').read()).group(1))")
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+          if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF_NAME#v}" != "$V" ]]; then
+            echo "tag $GITHUB_REF_NAME does not match __version__ $V"; exit 1; fi
+      - name: Tests
+        run: python -m unittest discover -s tests -v
+      - name: Icons
+        run: python packaging/make_icons.py --text "SC" --color "#2f6f9f" --out packaging/icons
+      - name: Build
+        run: pyinstaller --noconfirm --distpath dist --workpath build packaging/solution_calculator.spec
+
+      - name: Package (macOS)
+        if: matrix.kind == 'macos'
+        run: |
+          "dist/$APP_BUNDLE/Contents/MacOS/$BUILD" --selftest --out "dist/selftest-macos-$(uname -m).json"
+          packaging/macos/build_dmg.sh "$APP_BUNDLE" "$SLUG" "$VERSION"
+
+      - name: Package (Windows)
+        if: matrix.kind == 'windows'
+        shell: pwsh
+        run: |
+          & "dist\$env:BUILD\$env:BUILD.exe" --selftest --out dist\selftest-windows.json | Out-Default
+          if (-not (Test-Path dist\selftest-windows.json)) { exit 1 }
+          choco install innosetup --no-progress -y
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DAppVersion=$env:VERSION" packaging\windows\installer.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Compress-Archive -Path "dist\$env:BUILD" -DestinationPath "dist\$env:SLUG-$env:VERSION-windows-x64-portable.zip"
+          # silent install for the current user, self-test the installed copy, silent uninstall
+          $setup = Get-ChildItem "dist\$env:SLUG-*-windows-x64-setup.exe" | Select-Object -First 1
+          $p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER','/DIR=C:\app-test' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { exit 1 }
+          & "C:\app-test\$env:BUILD.exe" --selftest --out dist\selftest-windows-installed.json | Out-Default
+          if (-not (Test-Path dist\selftest-windows-installed.json)) { exit 1 }
+          $u = Start-Process C:\app-test\unins000.exe -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          if ($u.ExitCode -ne 0) { exit 1 }
+
+      - name: Package (Linux)
+        if: matrix.kind == 'linux'
+        run: |
+          "dist/$BUILD/$BUILD" --selftest --out dist/selftest-linux.json
+          packaging/linux/build_linux.sh "$VERSION"
+          sudo apt-get install -y ./dist/*_amd64.deb
+          solution-calculator --selftest --out dist/selftest-linux-deb.json
+          sudo apt-get remove -y solution-calculator
+          mkdir -p /tmp/t && tar -C /tmp/t -xzf dist/*-linux-x86_64.tar.gz
+          HOME=/tmp/home /tmp/t/$SLUG/install.sh
+          /tmp/home/.local/bin/solution-calculator --selftest --out dist/selftest-linux-tar.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            dist/*.dmg
+            dist/*-setup.exe
+            dist/*-portable.zip
+            dist/*.tar.gz
+            dist/*.deb
+            dist/selftest-*.json
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Checksums and notes
+        run: |
+          mkdir -p reports && mv artifacts/selftest-*.json reports/
+          cat reports/*.json
+          V="${GITHUB_REF_NAME#v}"
+          python3 packaging/release_notes.py --dir artifacts --repo "$GITHUB_REPOSITORY" \
+            --tag "$GITHUB_REF_NAME" --name "$DISPLAY_NAME" --notes "docs/release-notes/$V.md" > notes.md
+          cat artifacts/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-preview
+          path: |
+            artifacts/SHA256SUMS.txt
+            notes.md
+      - name: Publish
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" artifacts/* --clobber
+            gh release edit "$GITHUB_REF_NAME" --notes-file notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" artifacts/* --title "$DISPLAY_NAME ${GITHUB_REF_NAME#v}" --notes-file notes.md --verify-tag
+          fi

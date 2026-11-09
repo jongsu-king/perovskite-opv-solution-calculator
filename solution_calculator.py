@@ -8,8 +8,11 @@ Run:  python3 solution_calculator.py
 
 from __future__ import annotations
 
+import argparse
 import csv
 import json
+import os
+import sys
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -31,14 +34,31 @@ from calc import (
 __author__ = "Jongsu Lim"
 __copyright__ = "Copyright (c) 2026 Jongsu Lim"
 __license__ = "MIT"
-__version__ = "1.0"
+__version__ = "1.1.0"
 
 APP_NAME = "Solution Preparation Calculator"
 COPYRIGHT = "© 2026 Jongsu Lim"
 REPO_URL = "https://github.com/jongsu-king/perovskite-opv-solution-calculator"
 
 APP_DIR = Path(__file__).resolve().parent
-LIB_PATH = APP_DIR / "library.json"
+FROZEN = bool(getattr(sys, "frozen", False))
+
+
+def user_data_dir() -> Path:
+    """Where an installed copy keeps library.json (outside the program folder,
+    so that updates and uninstalls leave your own materials alone)."""
+    if sys.platform == "win32":
+        base = Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming")
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Application Support"
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    return base / APP_NAME
+
+
+# Run from source: library.json next to this file (as documented in the README).
+# Installed build: the per-user folder above.
+LIB_PATH = (user_data_dir() / "library.json") if FROZEN else (APP_DIR / "library.json")
 
 A_CATIONS = ["MA", "FA", "Cs", "Rb", "GA", "PEA", "BA", "OA", "K"]
 B_CATIONS = ["Pb", "Sn", "Ge"]
@@ -1093,6 +1113,7 @@ class LibraryTab(ttk.Frame):
 
     def save(self):
         try:
+            LIB_PATH.parent.mkdir(parents=True, exist_ok=True)
             LIB_PATH.write_text(
                 json.dumps(self.app.library, ensure_ascii=False, indent=2),
                 encoding="utf-8")
@@ -1185,6 +1206,26 @@ class App(tk.Tk):
             text="Fill in the inputs and press [Calculate]. "
                  "Solvent volumes ignore the volume of the solutes.")
         self.status.pack(fill="x")
+        self._build_menu()
+
+    def _build_menu(self):
+        menubar = tk.Menu(self)
+        help_menu = tk.Menu(menubar, tearoff=False)
+        help_menu.add_command(label="About", command=self.show_about)
+        help_menu.add_command(label="Installation and updates (web)",
+                              command=lambda: __import__("webbrowser").open(REPO_URL + "/blob/main/docs/INSTALL.md"))
+        help_menu.add_separator()
+        menubar.add_cascade(label="Help", menu=help_menu)
+        self.config(menu=menubar)
+        try:
+            import selfupdate
+            self.updater = selfupdate.Updater(selfupdate.App(
+                repo="jongsu-king/perovskite-opv-solution-calculator", name=APP_NAME,
+                version=__version__, env_prefix="SOLCALC"))
+            selfupdate.attach_tk(self, self.updater, help_menu, lang="en",
+                                 status=lambda text: text and self.status.configure(text=text))
+        except Exception as exc:  # noqa: BLE001 - updates must never stop the calculator
+            print(f"update support unavailable: {exc}", file=sys.stderr)
 
     def show_about(self):
         messagebox.showinfo(
@@ -1237,7 +1278,42 @@ class App(tk.Tk):
         self.htl.host_combo.configure(values=self.transport_names())
 
 
-def main():
+def selftest(out: str | None = None) -> int:
+    """Headless check used by the installers' build: compute one recipe of each kind."""
+    results = {"version": __version__, "frozen": FROZEN}
+    try:
+        recipe = perovskite_recipe(
+            a_sites=[("MA", 1.0)], b_sites=[("Pb", 1.0)], x_sites=[("I", 3.0)],
+            conc_M=1.0, volume_mL=1.0, solvents=[("DMF", 4.0), ("DMSO", 1.0)])
+        results["perovskite_rows"] = len(recipe.rows)
+        results["ok"] = results["perovskite_rows"] > 0
+    except Exception as exc:  # noqa: BLE001
+        results["ok"] = False
+        results["error"] = repr(exc)
+    text = json.dumps(results, indent=2)
+    if out:
+        Path(out).write_text(text, encoding="utf-8")
+    else:
+        print(text)
+    return 0 if results.get("ok") else 1
+
+
+def main(argv: list[str] | None = None):
+    parser = argparse.ArgumentParser(prog="solution-calculator", description=APP_NAME)
+    parser.add_argument("--version", action="version", version=f"{APP_NAME} {__version__}")
+    parser.add_argument("--selftest", action="store_true", help="compute a test recipe without the window and exit")
+    parser.add_argument("--out", help="with --selftest: write the result to this JSON file")
+    parser.add_argument("--update", action="store_true",
+                        help="check GitHub for a newer release and install it (installed copies)")
+    args, _ = parser.parse_known_args(argv)
+    if args.selftest:
+        raise SystemExit(selftest(args.out))
+    if args.update:
+        import selfupdate
+        updater = selfupdate.Updater(selfupdate.App(
+            repo="jongsu-king/perovskite-opv-solution-calculator", name=APP_NAME,
+            version=__version__, env_prefix="SOLCALC"))
+        raise SystemExit(selfupdate.cli(updater))
     App().mainloop()
 
 

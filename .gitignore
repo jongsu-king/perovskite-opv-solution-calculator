@@ -13,3 +13,9 @@ recipe*.json
 
 # macOS
 .DS_Store
+
+# Build output
+build/
+dist/
+packaging/icons/
+*.spec.bak

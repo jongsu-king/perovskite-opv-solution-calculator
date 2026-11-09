@@ -10,16 +10,35 @@ target perovskite composition (`ABX3`), an organic donor:acceptor blend ratio or
 a doped charge-transport recipe into the masses you actually weigh out and the
 volumes you pipette.
 
-Pure Python standard library (tkinter) — nothing to install.
+Pure Python standard library (tkinter). Ready-to-run programs for Windows, macOS
+and Linux are on the [Releases page](https://github.com/jongsu-king/perovskite-opv-solution-calculator/releases/latest), and installed copies update themselves.
 
-Authors: Hyunsung Ji, Jongsu Lim, Kyungsik Kim, Jaeho Shin, Seung-Eon Lee, Jinho Lee · v1.0
+Authors: Hyunsung Ji, Jongsu Lim, Kyungsik Kim, Jaeho Shin, Seung-Eon Lee, Jinho Lee · v1.1.0
 
 ![Perovskite tab](docs/perovskite.png)
 
 *A triple-cation recipe: enter `Cs0.05FA0.79MA0.16Pb(I0.83Br0.17)3` at 1.2 M in
 1 mL with 5% B-site excess and 30 mol% MACl, and read off what to weigh.*
 
-## Run
+## Download
+
+| System | File on the [latest release](https://github.com/jongsu-king/perovskite-opv-solution-calculator/releases/latest) |
+| --- | --- |
+| Windows 10/11 (64-bit) | `Solution-Calculator-<version>-windows-x64-setup.exe` (installer) or `…-windows-x64-portable.zip` |
+| macOS, Apple silicon | `Solution-Calculator-<version>-macos-arm64.dmg` |
+| macOS, Intel | `Solution-Calculator-<version>-macos-x86_64.dmg` |
+| Ubuntu / Debian | `solution-calculator_<version>_amd64.deb` |
+| Other Linux | `Solution-Calculator-<version>-linux-x86_64.tar.gz` (run `install.sh`) |
+
+Step-by-step instructions, the first-start security prompts of unsigned builds,
+checksums and uninstalling are in **[docs/INSTALL.md](docs/INSTALL.md)**.
+
+**Automatic updates.** An installed copy checks GitHub once a day, downloads a newer
+release, verifies it against the release's `SHA256SUMS.txt` and installs it when you
+close the program. Help → Automatic updates switches this to *only tell me* or *off*.
+Details: [docs/INSTALL.md#automatic-updates](docs/INSTALL.md#automatic-updates).
+
+## Run from source
 
 ```bash
 git clone https://github.com/jongsu-king/perovskite-opv-solution-calculator.git
@@ -37,8 +56,11 @@ Requires Python 3.10+ with tkinter (macOS / Windows / Linux).
 | `solution_calculator.py` | GUI (entry point) |
 | `calc.py` | Calculation logic — importable without the GUI |
 | `chem.py` | Formula parser, molar masses, built-in material library |
-| `docs/` | Screenshots used in this README |
-| `library.json` | Your own materials (created when you save from the Library tab) |
+| `selfupdate.py` | Automatic updates from GitHub Releases (installed copies) |
+| `packaging/` | PyInstaller spec, Windows installer, macOS disk image and Linux package scripts |
+| `tests/` | Unit and end-to-end tests of the updater |
+| `docs/` | Installation guide, release notes, screenshots |
+| `library.json` | Your own materials (created when you save from the Library tab; an installed copy keeps it in your settings folder) |
 
 ## Tabs
 
